@@ -12,7 +12,7 @@ sudo pip install python-wordpress-xmlrpc
 
 ## Install
 
-1. git clone git@github.com:tetlika/testo.git somefolder
+1. git clone https://github.com/tetlika/testo.git somefolder
 2. cd somefolder
 3. vagrant up
 
