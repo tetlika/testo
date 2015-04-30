@@ -1,0 +1,90 @@
+- hosts: all
+  sudo: true
+
+  tasks:
+    - name: update apt cache
+      apt: update_cache=yes
+   
+    - name: install apache stuff
+      apt: pkg={{ item }} state=latest
+      with_items:
+        - apache2
+        - libapache2-mod-php5
+
+    - name: install mysql stuff
+      apt: pkg={{ item }} state=latest
+      with_items:
+        - mysql-client
+        - mysql-server
+        - python-mysqldb
+
+    - name: install php stuff
+      apt: pkg={{ item }} state=latest
+      with_items:
+        - php5
+        - php5-mysql
+        - php5-xmlrpc
+
+
+    - name: start mysql
+      service:
+        name: "mysql"
+        state: started
+        enabled: yes
+
+    - name: change root password
+      mysql_user:
+        name: "root"
+        password: "root"
+        host: "{{ item }}"
+        state: present
+      with_items:
+        - "{{ ansible_hostname }}"
+        - 127.0.0.1
+        - localhost
+
+    - name: install creds for root
+      template:
+        src: templates/mysql
+        dest: "/root/.my.cnf"
+        owner: "root"
+        mode: 0600
+
+    - name: create db for wp
+      mysql_db:
+        name: "wordpress"
+        state: "present"
+        login_user: "root"
+        login_password: "root"
+
+    - name: configure mysql user for wp
+      mysql_user:
+        name: "wordpress"
+        password: "wordpress"
+        host: "localhost"
+        priv: "wordpress.*:ALL"
+        state: "present"
+   
+    - name: copy db template
+      template: src=templates/wp.sql dest=/tmp
+
+    - name: restore init db from sql file
+      mysql_db: name=wordpress state=import target=/tmp/wp.sql
+ 
+    - name: untar WP
+      unarchive: src=wp.tar.gz dest=/var/www/
+
+    - name: configure apache
+      template: src=templates/wp.conf dest=/etc/apache2/sites-available/
+    
+    - name: enable vhost
+      command: a2ensite wp
+    
+    - name: disable default vhost
+      command: a2dissite 000-default
+
+    - name: make sure apache running
+      service: name=apache2 state=restarted enabled=yes
+   
+
+
